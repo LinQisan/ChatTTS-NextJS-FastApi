@@ -1,7 +1,61 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import ChatTTS
+import torchaudio
+import torch
+import numpy as np
+import io
+import wave
 
 app = FastAPI()
 
-@app.get("/api/python")
-def hello_world():
-    return {"message": "Hello World"}
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class TextRequest(BaseModel):
+    text: str
+
+
+chat = ChatTTS.Chat()
+chat.load_models(compile=False)
+
+
+@app.post("/generate_audio/")
+def generate_audio(request: TextRequest):
+    texts = [request.text]
+    wavs = chat.infer(texts, use_decoder=True)
+
+    if len(wavs[0].shape) > 1:
+        print("Before squeeze: ", wavs[0].shape)
+        wav_data = wavs[0].squeeze()
+        print("After squeeze: ", wav_data.shape)
+    else:
+        wav_data = wavs[0]
+
+    wav_data = (wav_data * 32767).astype(np.int16)
+
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(24000)
+        wf.writeframes(wav_data.tobytes())
+    buffer.seek(0)
+
+    print("Audio file size: ", len(buffer.getvalue()))
+
+    return StreamingResponse(buffer, media_type="audio/wav")
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
