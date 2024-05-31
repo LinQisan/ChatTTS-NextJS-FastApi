@@ -2,7 +2,7 @@
 
 ### Introduction
 
-This project is a real-time audio generation service using the ChatTTS library to convert text into audio streams. It features a backend developed with FastAPI and a frontend using Next.js 14. After attempting to deploy this project on the Vercel, it consistently failed 🥲.
+This project is a real-time audio generation service using the [ChatTTS](https://github.com/2noise/ChatTTS) library to convert text into audio streams. It features a backend developed with FastAPI and a frontend using Next.js 14. After attempting to deploy this project on the Vercel, it consistently failed 🥲.
 
 ### Important Note
 
