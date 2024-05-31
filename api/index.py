@@ -1,13 +1,13 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import ChatTTS
 import torchaudio
 import torch
 import numpy as np
 import io
 import wave
+import json
 
 app = FastAPI()
 
@@ -19,18 +19,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-class TextRequest(BaseModel):
-    text: str
-
-
 chat = ChatTTS.Chat()
 chat.load_models(compile=False)
 
 
 @app.post("/generate_audio/")
-def generate_audio(request: TextRequest):
-    texts = [request.text]
+async def generate_audio(request: Request):
+    req_data = await request.json()
+    if "text" not in req_data:
+        raise HTTPException(
+            status_code=400, detail="Missing 'text' field in request body"
+        )
+
+    text = req_data["text"]
+    texts = [text]
     wavs = chat.infer(texts, use_decoder=True)
 
     if len(wavs[0].shape) > 1:
